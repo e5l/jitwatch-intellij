@@ -26,7 +26,7 @@ class JitReportToolWindow(val project: Project) : JPanel(BorderLayout()) {
     private val modelService = JitWatchModelService.getInstance(project)
     private val reportTable = TableView<InlineFailureGroup>()
     private val reportTableModel = ListTableModel<InlineFailureGroup>(
-            CalleeColumnInfo, CalleeSizeColumnInfo, CalleeCountColumnInfo, CallSiteColumnInfo, ReasonColumnInfo
+        CalleeColumnInfo, CalleeSizeColumnInfo, CalleeCountColumnInfo, CallSiteColumnInfo, ReasonColumnInfo
     ).apply {
         isSortable = true
     }
@@ -123,7 +123,14 @@ object CallSiteColumnInfo : ColumnInfo<InlineFailureGroup, Int>("Call Sites") {
 }
 
 object LinkRenderer : ColoredTableCellRenderer() {
-    override fun customizeCellRenderer(table: JTable?, value: Any?, selected: Boolean, hasFocus: Boolean, row: Int, column: Int) {
+    override fun customizeCellRenderer(
+        table: JTable?,
+        value: Any?,
+        selected: Boolean,
+        hasFocus: Boolean,
+        row: Int,
+        column: Int
+    ) {
         if (value != null) {
             append(value.toString(), SimpleTextAttributes.LINK_ATTRIBUTES)
         }

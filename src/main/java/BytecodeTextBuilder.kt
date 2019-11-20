@@ -5,7 +5,7 @@ import org.adoptopenjdk.jitwatch.model.MetaClass
 import org.adoptopenjdk.jitwatch.model.bytecode.BytecodeInstruction
 import org.adoptopenjdk.jitwatch.model.bytecode.MemberBytecode
 
-class BytecodeTextBuilder() {
+class BytecodeTextBuilder {
     private class MemberBytecodeMap(val startLine: Int) {
         val instructionToLineMap = mutableMapOf<BytecodeInstruction, Int>()
     }
@@ -21,7 +21,7 @@ class BytecodeTextBuilder() {
             memberIndex[member] = bytecodeMap
 
             val memberBytecode = member.memberBytecode
-            appendLine(member.toStringUnqualifiedMethodName(false), member)
+            appendLine(member.toStringUnqualifiedMethodName(false, false), member)
             if (memberBytecode != null) {
                 appendBytecode(memberBytecode, bytecodeMap)
             }

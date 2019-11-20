@@ -1,37 +1,38 @@
 package ru.yole.jitwatch
 
+import org.adoptopenjdk.jitwatch.compilation.*
 import org.adoptopenjdk.jitwatch.core.JITWatchConstants.*
-import org.adoptopenjdk.jitwatch.journal.AbstractJournalVisitable
-import org.adoptopenjdk.jitwatch.journal.JournalUtil
-import org.adoptopenjdk.jitwatch.model.IMetaMember
-import org.adoptopenjdk.jitwatch.model.IParseDictionary
-import org.adoptopenjdk.jitwatch.model.IReadOnlyJITDataModel
-import org.adoptopenjdk.jitwatch.model.Tag
-import org.adoptopenjdk.jitwatch.treevisitor.ITreeVisitable
-import org.adoptopenjdk.jitwatch.util.ParseUtil
+import org.adoptopenjdk.jitwatch.model.*
+import org.adoptopenjdk.jitwatch.treevisitor.*
+import org.adoptopenjdk.jitwatch.util.*
 
-class InlineFailureInfo(val callSite: IMetaMember,
-                        val bci: Int,
-                        val callee: IMetaMember,
-                        val calleeSize: Int,
-                        val calleeInvocationCount: Int?,
-                        val reason: String)
+class InlineFailureInfo(
+    val callSite: IMetaMember,
+    val bci: Int,
+    val callee: IMetaMember,
+    val calleeSize: Int,
+    val calleeInvocationCount: Int?,
+    val reason: String
+)
 
 class InlineCallSite(val member: IMetaMember, val bci: Int)
 
-class InlineFailureGroup(val callee: IMetaMember,
-                         val calleeSize: Int,
-                         val calleeInvocationCount: Int?,
-                         val reasons: Set<String>,
-                         val callSites: List<InlineCallSite>)
+class InlineFailureGroup(
+    val callee: IMetaMember,
+    val calleeSize: Int,
+    val calleeInvocationCount: Int?,
+    val reasons: Set<String>,
+    val callSites: List<InlineCallSite>
+)
 
 class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember) -> Boolean) : ITreeVisitable {
     private val _failures = mutableListOf<InlineFailureInfo>()
     val failureGroups: List<InlineFailureGroup> by lazy {
         val map = _failures
-                .filter { it.reason != "not inlineable" && it.reason != "no static binding" }
-                .groupBy { it.callee }
-        map.map { InlineFailureGroup(it.key,
+            .filter { it.reason != "not inlineable" && it.reason != "no static binding" }
+            .groupBy { it.callee }
+        map.map {
+            InlineFailureGroup(it.key,
                 it.value.first().calleeSize,
                 it.value.first().calleeInvocationCount,
                 it.value.mapTo(mutableSetOf<String>()) { failure -> failure.reason },
@@ -44,23 +45,34 @@ class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember)
 
     override fun visit(mm: IMetaMember?) {
         if (mm == null || !mm.isCompiled) return
-        JournalUtil.visitParseTagsOfLastTask(mm.journal, InlineJournalVisitor(model, mm, _failures, filter))
+        CompilationUtil.visitParseTagsOfCompilation(
+            mm.lastCompilation,
+            InlineJournalVisitor(model, mm, _failures, filter)
+        )
     }
 
     override fun reset() {
     }
 
-    private class InlineJournalVisitor(val model: IReadOnlyJITDataModel,
-                                       val callSite: IMetaMember,
-                                       val failures: MutableList<InlineFailureInfo>,
-                                       val filter: (IMetaMember) -> Boolean) : AbstractJournalVisitable() {
+    private class InlineJournalVisitor(
+        model: IReadOnlyJITDataModel,
+        val callSite: IMetaMember,
+        val failures: MutableList<InlineFailureInfo>,
+        val filter: (IMetaMember) -> Boolean
+    ) : AbstractCompilationWalker(model) {
         override fun visitTag(toVisit: Tag, parseDictionary: IParseDictionary) {
             processParseTag(toVisit, parseDictionary)
         }
 
+        override fun visit(member: IMetaMember) {
+        }
+
+        override fun reset() {
+        }
+
         private fun processParseTag(toVisit: Tag, parseDictionary: IParseDictionary, bci: Int? = null) {
             var methodID: String? = null
-            var currentBCI : Int = 0
+            var currentBCI: Int = 0
 
             for (child in toVisit.children) {
                 val tagName = child.name
@@ -85,10 +97,14 @@ class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember)
                         val method = parseDictionary.getMethod(methodID)
                         val metaMember = ParseUtil.lookupMember(methodID, parseDictionary, model)
                         if (metaMember != null && filter(metaMember)) {
-                            failures.add(InlineFailureInfo(callSite, bci ?: currentBCI, metaMember,
+                            failures.add(
+                                InlineFailureInfo(
+                                    callSite, bci ?: currentBCI, metaMember,
                                     method?.attributes?.get(ATTR_BYTES)?.toInt() ?: -1,
                                     method?.attributes?.get(ATTR_IICOUNT)?.toInt(),
-                                    reason?.replace("&lt;", "<")?.replace("&gt;", ">") ?: "Unknown"))
+                                    reason?.replace("&lt;", "<")?.replace("&gt;", ">") ?: "Unknown"
+                                )
+                            )
                         }
 
                         methodID = null

@@ -44,11 +44,12 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
     private val messageLabel = JLabel()
     private val cardLayout = layout as CardLayout
     private val bytecodeDocument = EditorFactory.getInstance().createDocument("")
-    private val bytecodeEditor = EditorFactory.getInstance().createEditor(bytecodeDocument, project, PlainTextFileType.INSTANCE, true).apply {
-        settings.isLineNumbersShown = false
-        settings.isFoldingOutlineShown = false
-        settings.isLineMarkerAreaShown = false
-    }
+    private val bytecodeEditor =
+        EditorFactory.getInstance().createEditor(bytecodeDocument, project, PlainTextFileType.INSTANCE, true).apply {
+            settings.isLineNumbersShown = false
+            settings.isFoldingOutlineShown = false
+            settings.isLineMarkerAreaShown = false
+        }
 
     private val modelService = JitWatchModelService.getInstance(project)
 
@@ -61,11 +62,12 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
     private var movingCaretInBytecode = false
 
     init {
-        project.messageBus.connect(this).subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerAdapter() {
-            override fun selectionChanged(event: FileEditorManagerEvent) {
-                updateContent(event.newFile, event.newEditor)
-            }
-        })
+        project.messageBus.connect(this)
+            .subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, object : FileEditorManagerAdapter() {
+                override fun selectionChanged(event: FileEditorManagerEvent) {
+                    updateContent(event.newFile, event.newEditor)
+                }
+            })
 
         EditorFactory.getInstance().eventMulticaster.addCaretListener(object : CaretAdapter() {
             override fun caretPositionChanged(e: CaretEvent) {
@@ -93,7 +95,11 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 
     private fun updateContentFromSelectedEditor() {
         val fileEditorManager = FileEditorManager.getInstance(project)
-        updateContent(fileEditorManager.selectedFiles.firstOrNull(), fileEditorManager.selectedEditors.firstOrNull(), true)
+        updateContent(
+            fileEditorManager.selectedFiles.firstOrNull(),
+            fileEditorManager.selectedEditors.firstOrNull(),
+            true
+        )
     }
 
     private fun updateContent(file: VirtualFile?, fileEditor: FileEditor?, syncCaret: Boolean = false) {
@@ -145,8 +151,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
                 movingCaretInBytecode = true
                 try {
                     bytecodeDocument.replaceString(0, bytecodeDocument.textLength, bytecodeTextBuilder!!.text)
-                }
-                finally {
+                } finally {
                     movingCaretInBytecode = false
                 }
             }
@@ -162,13 +167,15 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         modelService.processBytecodeAnnotations(psiFile) { method, member, memberBytecode, instruction, annotationsForBCI ->
             val line = bytecodeTextBuilder!!.findLine(member, instruction.offset) ?: return@processBytecodeAnnotations
             val color = annotationsForBCI.mapNotNull { getColorForBytecodeAnnotation(it.type) }.firstOrNull()
-            highlightBytecodeLine(line, color,
-                    annotationsForBCI.joinToString(separator = "\n") { it.annotation },
-                    markupModel)
+            highlightBytecodeLine(
+                line, color,
+                annotationsForBCI.joinToString(separator = "\n") { it.annotation },
+                markupModel
+            )
         }
     }
 
-    private fun getColorForBytecodeAnnotation(type: BCAnnotationType): Color? = when(type) {
+    private fun getColorForBytecodeAnnotation(type: BCAnnotationType): Color? = when (type) {
         BCAnnotationType.BRANCH -> JBColor.BLUE
         BCAnnotationType.ELIMINATED_ALLOCATION, BCAnnotationType.LOCK_COARSEN, BCAnnotationType.LOCK_ELISION -> JBColor.GRAY
         BCAnnotationType.INLINE_FAIL -> JBColor.RED
@@ -183,10 +190,11 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         val lineEndOffset = document.getLineEndOffset(line)
         val textAttributes = TextAttributes(color, null, null, null, 0)
         val highlighter = markupModel.addRangeHighlighter(
-                (lineStartOffset + 4).coerceAtMost(lineEndOffset),
-                lineEndOffset,
-                HighlighterLayer.SYNTAX,
-                textAttributes, HighlighterTargetArea.EXACT_RANGE) as RangeHighlighterEx
+            (lineStartOffset + 4).coerceAtMost(lineEndOffset),
+            lineEndOffset,
+            HighlighterLayer.SYNTAX,
+            textAttributes, HighlighterTargetArea.EXACT_RANGE
+        ) as RangeHighlighterEx
 
         val highlightInfo = HighlightInfo.newHighlightInfo(HighlightInfoType.INFORMATION)
             .range(highlighter.startOffset, highlighter.endOffset)
@@ -215,8 +223,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
         movingCaretInBytecode = true
         try {
             bytecodeEditor.moveCaretToLine(bytecodeLine)
-        }
-        finally {
+        } finally {
             movingCaretInBytecode = false
         }
     }
@@ -229,8 +236,7 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
             movingCaretInSource = true
             try {
                 activeSourceEditor?.moveCaretToLine(sourceLine - 1)
-            }
-            finally {
+            } finally {
                 movingCaretInSource = false
             }
         }
@@ -250,8 +256,10 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
                 val color = EditorColorsManager.getInstance().globalScheme.getColor(EditorColors.CARET_ROW_COLOR)!!
                 val rangeColor = color.slightlyDarker()
 
-                lineRangeHighlighter = bytecodeEditor.markupModel.addRangeHighlighter(startOffset, endOffset, HighlighterLayer.CARET_ROW - 1,
-                        TextAttributes(null, rangeColor, null, null, 0), HighlighterTargetArea.LINES_IN_RANGE)
+                lineRangeHighlighter = bytecodeEditor.markupModel.addRangeHighlighter(
+                    startOffset, endOffset, HighlighterLayer.CARET_ROW - 1,
+                    TextAttributes(null, rangeColor, null, null, 0), HighlighterTargetArea.LINES_IN_RANGE
+                )
             }
         }
     }
@@ -283,8 +291,10 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
 }
 
 private fun Color.slightlyDarker(): Color {
-    return Color(Math.max((red * 0.9).toInt(), 0),
-            Math.max((green * 0.9).toInt(), 0),
-            Math.max((blue * 0.9).toInt(), 0),
-            alpha)
+    return Color(
+        Math.max((red * 0.9).toInt(), 0),
+        Math.max((green * 0.9).toInt(), 0),
+        Math.max((blue * 0.9).toInt(), 0),
+        alpha
+    )
 }

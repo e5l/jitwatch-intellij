@@ -29,15 +29,18 @@ class LoadLogAction : AnAction() {
 }
 
 fun loadLogAndShowUI(project: Project, logFile: File) {
-   registerToolWindows(project)
+    registerToolWindows(project)
 
     JitWatchModelService.getInstance(project).loadLog(logFile) { errors ->
         if (!errors.isEmpty()) {
             Notifications.Bus.notify(
-                    Notification("JitWatch",
-                            "Log parse failed",
-                            errors.first().first,
-                            NotificationType.ERROR))
+                Notification(
+                    "JitWatch",
+                    "Log parse failed",
+                    errors.first().first,
+                    NotificationType.ERROR
+                )
+            )
 
         } else {
             ToolWindowManager.getInstance(project).getToolWindow(JitReportToolWindow.ID).activate(null)
@@ -49,14 +52,16 @@ fun registerToolWindows(project: Project) {
     val toolWindowManager = ToolWindowManager.getInstance(project)
     val existingToolWindow = JitToolWindow.getToolWindow(project)
     if (existingToolWindow == null) {
-        val jitWatchToolWindow = toolWindowManager.registerToolWindow(JitToolWindow.ID, false, ToolWindowAnchor.RIGHT, project, true)
+        val jitWatchToolWindow =
+            toolWindowManager.registerToolWindow(JitToolWindow.ID, false, ToolWindowAnchor.RIGHT, project, true)
         jitWatchToolWindow.contentManager.addContent(
-                ContentFactory.SERVICE.getInstance().createContent(JitToolWindow(project), "", false)
+            ContentFactory.SERVICE.getInstance().createContent(JitToolWindow(project), "", false)
         )
 
-        val reportToolWindow = toolWindowManager.registerToolWindow(JitReportToolWindow.ID, false, ToolWindowAnchor.BOTTOM, project, true)
+        val reportToolWindow =
+            toolWindowManager.registerToolWindow(JitReportToolWindow.ID, false, ToolWindowAnchor.BOTTOM, project, true)
         reportToolWindow.contentManager.addContent(
-                ContentFactory.SERVICE.getInstance().createContent(JitReportToolWindow(project), "", false)
+            ContentFactory.SERVICE.getInstance().createContent(JitReportToolWindow(project), "", false)
         )
     }
 }

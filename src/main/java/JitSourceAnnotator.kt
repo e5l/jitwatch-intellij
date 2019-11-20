@@ -43,7 +43,9 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
 
         modelService.processBytecodeAnnotations(psiFile) { method, member, memberBytecode, instruction, lineAnnotations ->
             for (lineAnnotation in lineAnnotations) {
-                val sourceElement = mapBytecodeAnnotationToSource(method, member, memberBytecode, instruction, lineAnnotation) ?: continue
+                val sourceElement =
+                    mapBytecodeAnnotationToSource(method, member, memberBytecode, instruction, lineAnnotation)
+                        ?: continue
                 result.add(sourceElement to lineAnnotation)
             }
         }
@@ -51,11 +53,13 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
         return result
     }
 
-    private fun mapBytecodeAnnotationToSource(method: PsiElement,
-                                              member: IMetaMember,
-                                              memberBytecode: MemberBytecode,
-                                              instruction: BytecodeInstruction,
-                                              lineAnnotation: LineAnnotation): PsiElement? {
+    private fun mapBytecodeAnnotationToSource(
+        method: PsiElement,
+        member: IMetaMember,
+        memberBytecode: MemberBytecode,
+        instruction: BytecodeInstruction,
+        lineAnnotation: LineAnnotation
+    ): PsiElement? {
         val languageSupport = LanguageSupport.forLanguage(method.language)
 
         val sourceLine = memberBytecode.lineTable.findSourceLineForBytecodeOffset(instruction.offset)
@@ -84,8 +88,10 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
         }
     }
 
-    private fun getMemberSignatureFromBytecodeComment(currentMember: IMetaMember,
-                                                      instruction: BytecodeInstruction): MemberSignatureParts? {
+    private fun getMemberSignatureFromBytecodeComment(
+        currentMember: IMetaMember,
+        instruction: BytecodeInstruction
+    ): MemberSignatureParts? {
         var comment: String? = instruction.commentWithMemberPrefixStripped ?: return null
 
         if (ParseUtil.bytecodeMethodCommentHasNoClassPrefix(comment)) {
@@ -96,9 +102,11 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
         return MemberSignatureParts.fromBytecodeComment(comment)
     }
 
-    private fun findSameLineCallIndex(memberBytecode: MemberBytecode,
-                                      sourceLine: Int,
-                                      invokeInstruction: BytecodeInstruction): Int {
+    private fun findSameLineCallIndex(
+        memberBytecode: MemberBytecode,
+        sourceLine: Int,
+        invokeInstruction: BytecodeInstruction
+    ): Int {
         var result = -1
         val sameLineInstructions = memberBytecode.findInstructionsForSourceLine(sourceLine)
         for (instruction in sameLineInstructions) {
@@ -123,7 +131,11 @@ class JitSourceAnnotator : ExternalAnnotator<PsiFile, List<Pair<PsiElement, Line
         return lineStartOffset
     }
 
-    override fun apply(file: PsiFile, annotationResult: List<Pair<PsiElement, LineAnnotation>>?, holder: AnnotationHolder) {
+    override fun apply(
+        file: PsiFile,
+        annotationResult: List<Pair<PsiElement, LineAnnotation>>?,
+        holder: AnnotationHolder
+    ) {
         if (annotationResult == null) return
 
         for (pair in annotationResult) {

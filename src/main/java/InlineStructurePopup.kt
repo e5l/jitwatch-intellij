@@ -22,14 +22,14 @@ import ru.yole.jitwatch.languages.forElement
 class InlineTreeStructure(val project: Project, val root: CompileNode) : AbstractTreeStructure() {
     override fun getRootElement() = InlineTreeNodeDescriptor(project, null, root, true)
 
-    override fun createDescriptor(element: Any?, parentDescriptor: NodeDescriptor<*>?) = element as NodeDescriptor<*>
+    override fun createDescriptor(element: Any, parentDescriptor: NodeDescriptor<*>?) = element as NodeDescriptor<*>
 
-    override fun getParentElement(element: Any?) = (element as InlineTreeNodeDescriptor).parentDescriptor
+    override fun getParentElement(element: Any) = (element as InlineTreeNodeDescriptor).parentDescriptor
 
-    override fun getChildElements(element: Any?) =
-            (element as InlineTreeNodeDescriptor).compileNode.children
-                    .map { InlineTreeNodeDescriptor(project, element as NodeDescriptor<*>, it )}
-                    .toTypedArray()
+    override fun getChildElements(element: Any) =
+        (element as InlineTreeNodeDescriptor).compileNode.children
+            .map { InlineTreeNodeDescriptor(project, element as NodeDescriptor<*>, it) }
+            .toTypedArray()
 
     override fun commit() {
     }
@@ -37,18 +37,20 @@ class InlineTreeStructure(val project: Project, val root: CompileNode) : Abstrac
     override fun hasSomethingToCommit() = false
 }
 
-class InlineTreeNodeDescriptor(project: Project,
-                               parentDescriptor: NodeDescriptor<*>?,
-                               val compileNode: CompileNode,
-                               val isRoot: Boolean = false)
-        : PresentableNodeDescriptor<CompileNode>(project, parentDescriptor)
-{
+class InlineTreeNodeDescriptor(
+    project: Project,
+    parentDescriptor: NodeDescriptor<*>?,
+    val compileNode: CompileNode,
+    val isRoot: Boolean = false
+) : PresentableNodeDescriptor<CompileNode>(project, parentDescriptor) {
     override fun update(presentation: PresentationData) {
-        presentation.addText(compileNode.member?.presentableName() ?: "<Unknown>",
-                if (compileNode.isInlined || isRoot)
-                    SimpleTextAttributes.REGULAR_ATTRIBUTES
-                else
-                    SimpleTextAttributes.ERROR_ATTRIBUTES)
+        presentation.addText(
+            compileNode.member?.presentableName() ?: "<Unknown>",
+            if (compileNode.isInlined || isRoot)
+                SimpleTextAttributes.REGULAR_ATTRIBUTES
+            else
+                SimpleTextAttributes.ERROR_ATTRIBUTES
+        )
         presentation.tooltip = compileNode.tooltipText
     }
 
@@ -61,14 +63,15 @@ class ShowInlineStructureAction : AnAction() {
         val project = e.project!!
         val modelService = JitWatchModelService.getInstance(project)
         val compileChainWalker = CompileChainWalker(modelService.model)
-        val compileNode = compileChainWalker.buildCallTree(metaMember.journal) ?: return
+        val compileNode = compileChainWalker.buildCallTree(metaMember.selectedCompilation) ?: return
         val treeStructure = InlineTreeStructure(project, compileNode)
         val popupStep = object : BaseTreePopupStep<InlineTreeNodeDescriptor>(project, "Inline", treeStructure) {
             override fun isRootVisible() = true
 
             override fun onChosen(selectedValue: InlineTreeNodeDescriptor?, finalChoice: Boolean): PopupStep<*>? {
                 if (selectedValue != null) {
-                    val psiMember = JitWatchModelService.getInstance(project).getPsiMember(selectedValue.compileNode.member)
+                    val psiMember =
+                        JitWatchModelService.getInstance(project).getPsiMember(selectedValue.compileNode.member)
                     (psiMember as? Navigatable)?.navigate(true)
                 }
                 return PopupStep.FINAL_CHOICE

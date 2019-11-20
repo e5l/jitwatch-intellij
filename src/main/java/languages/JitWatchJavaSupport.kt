@@ -1,18 +1,14 @@
 package ru.yole.jitwatch.languages
 
-import com.intellij.debugger.engine.JVMNameUtil
-import com.intellij.lang.java.JavaLanguage
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Computable
-import com.intellij.openapi.util.TextRange
+import com.intellij.debugger.engine.*
+import com.intellij.lang.java.*
+import com.intellij.openapi.application.*
+import com.intellij.openapi.project.*
+import com.intellij.openapi.util.*
 import com.intellij.psi.*
-import com.intellij.psi.util.ClassUtil
-import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.psi.util.TypeConversionUtil
-import org.adoptopenjdk.jitwatch.model.MemberSignatureParts
-import org.adoptopenjdk.jitwatch.model.MetaClass
-import org.jetbrains.kotlin.idea.search.allScope
+import com.intellij.psi.util.*
+import org.adoptopenjdk.jitwatch.model.*
+import org.jetbrains.kotlin.idea.search.*
 
 class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
     override fun getAllClasses(file: PsiFile): List<PsiClass> =
@@ -32,16 +28,21 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
     override fun findMethodAtOffset(file: PsiFile, offset: Int): PsiMethod? =
         PsiTreeUtil.getParentOfType(file.findElementAt(offset), PsiMethod::class.java)
 
-    override fun getNameRange(element: PsiElement): TextRange = when(element) {
+    override fun getNameRange(element: PsiElement): TextRange = when (element) {
         is PsiNameIdentifierOwner -> element.nameIdentifier?.textRange ?: element.textRange
         else -> element.textRange
     }
 
-    override fun getClassVMName(cls: PsiClass): String?  = JVMNameUtil.getClassVMName(cls)
+    override fun getClassVMName(cls: PsiClass): String? = JVMNameUtil.getClassVMName(cls)
 
     override fun getContainingClass(method: PsiMethod): PsiClass? = method.containingClass
 
-    override fun matchesSignature(method: PsiMethod, memberName: String, paramTypeNames: List<String>, returnTypeName: String): Boolean {
+    override fun matchesSignature(
+        method: PsiMethod,
+        memberName: String,
+        paramTypeNames: List<String>,
+        returnTypeName: String
+    ): Boolean {
         val psiMethodName = if (method.isConstructor)
             JVMNameUtil.getClassVMName(method.containingClass)?.substringAfterLast('.') ?: method.name
         else
@@ -50,7 +51,7 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
 
         if (paramTypeNames.size != method.parameterList.parametersCount) return false
         val paramTypes = paramTypeNames zip method.parameterList.parameters.map { it.type.jvmText() }
-        if (paramTypes.any { it.first != it.second})
+        if (paramTypes.any { it.first != it.second })
             return false
 
         val psiMethodReturnTypeName = if (method.isConstructor) "void" else method.returnType?.jvmText() ?: ""
@@ -74,7 +75,12 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
         return erasedType.canonicalText
     }
 
-    override fun findCallToMember(file: PsiFile, offset: Int, calleeMember: MemberSignatureParts, sameLineCallIndex: Int): PsiElement? {
+    override fun findCallToMember(
+        file: PsiFile,
+        offset: Int,
+        calleeMember: MemberSignatureParts,
+        sameLineCallIndex: Int
+    ): PsiElement? {
         val statement = findStatement(file, offset) ?: return null
         var result: PsiElement? = null
         var curIndex = 0
@@ -114,6 +120,6 @@ class JitWatchJavaSupport : JitWatchLanguageSupport<PsiClass, PsiMethod> {
     }
 
     private fun findStatement(file: PsiFile, offset: Int) =
-            PsiTreeUtil.getParentOfType(file.findElementAt(offset), PsiStatement::class.java)
+        PsiTreeUtil.getParentOfType(file.findElementAt(offset), PsiStatement::class.java)
 
 }
