@@ -3,8 +3,7 @@ package ru.yole.jitwatch
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.Result
-import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.command.*
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.LogicalPosition
@@ -146,16 +145,14 @@ class JitToolWindow(private val project: Project) : JPanel(CardLayout()), Dispos
             bytecodeTextBuilder!!.appendClass(metaClass)
         }
 
-        object : WriteCommandAction<Unit>(project) {
-            override fun run(result: Result<Unit>) {
-                movingCaretInBytecode = true
-                try {
-                    bytecodeDocument.replaceString(0, bytecodeDocument.textLength, bytecodeTextBuilder!!.text)
-                } finally {
-                    movingCaretInBytecode = false
-                }
+        WriteCommandAction.runWriteCommandAction(project) {
+            movingCaretInBytecode = true
+            try {
+                bytecodeDocument.replaceString(0, bytecodeDocument.textLength, bytecodeTextBuilder!!.text)
+            } finally {
+                movingCaretInBytecode = false
             }
-        }.execute()
+        }
 
         renderBytecodeAnnotations(psiFile)
     }

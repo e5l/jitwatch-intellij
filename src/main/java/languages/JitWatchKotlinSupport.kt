@@ -31,7 +31,7 @@ class JitWatchKotlinSupport : JitWatchLanguageSupport<KtClassOrObject, KtCallabl
     override fun findClass(project: Project, metaClass: MetaClass): KtClassOrObject? =
         KotlinFullClassNameIndex.getInstance().get(metaClass.fullyQualifiedName, project, project.allScope())
             .also {
-                println("FIND[${metaClass.fullyQualifiedName}]: ${it.joinToString { it.name.toString() } }")
+                println("FIND[${metaClass.fullyQualifiedName}]: ${it.joinToString { it.name.toString() }}")
             }.firstOrNull()
 
     override fun getAllMethods(cls: KtClassOrObject): List<KtCallableDeclaration> =
@@ -61,13 +61,11 @@ class JitWatchKotlinSupport : JitWatchLanguageSupport<KtClassOrObject, KtCallabl
             IncompatibleClassTracker.DoNothing, JvmTarget.JVM_1_8
         )
 
-        val asString = descriptor.fqNameSafe.asString()
-        println("FOOOO: $asString")
-        return asString
+        return descriptor.fqNameSafe.asString()
     }
 
+    // FIXME descriptor.module.stableName is '<module-name>' instead of 'module-name' - Is it a good idea to simply try remove <>?
     private fun getModuleName(descriptor: DeclarationDescriptor) =
-        // FIXME descriptor.module.stableName is '<module-name>' instead of 'module-name' - Is it a good idea to simply try remove <>?
         descriptor.module.stableName?.toString()?.removeSurrounding("<", ">") ?: "<unknwon>"
 
     override fun getContainingClass(method: KtCallableDeclaration): KtClassOrObject? = method.containingClassOrObject

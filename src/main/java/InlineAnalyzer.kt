@@ -81,19 +81,15 @@ class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember)
 
                 when (tagName) {
                     TAG_METHOD -> methodID = tagAttrs[ATTR_ID]
-
                     TAG_BC -> {
                         val newBCI = tagAttrs[ATTR_BCI]
                         if (newBCI != null) {
                             currentBCI = newBCI.toInt()
                         }
                     }
-
                     TAG_CALL -> methodID = tagAttrs[ATTR_METHOD]
-
                     TAG_INLINE_FAIL -> {
                         val reason = tagAttrs[ATTR_REASON]
-
                         val method = parseDictionary.getMethod(methodID)
                         val metaMember = ParseUtil.lookupMember(methodID, parseDictionary, model)
                         if (metaMember != null && filter(metaMember)) {
@@ -109,11 +105,9 @@ class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember)
 
                         methodID = null
                     }
-
                     TAG_PARSE -> {
                         processParseTag(child, parseDictionary, bci ?: currentBCI)
                     }
-
                     TAG_PHASE -> {
                         val phaseName = tagAttrs[ATTR_NAME]
 
@@ -121,7 +115,6 @@ class InlineAnalyzer(val model: IReadOnlyJITDataModel, val filter: (IMetaMember)
                             visitTag(child, parseDictionary)
                         }
                     }
-
                     else -> handleOther(child)
                 }
             }

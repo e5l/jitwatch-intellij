@@ -20,6 +20,7 @@ import org.adoptopenjdk.jitwatch.model.bytecode.*
 import org.adoptopenjdk.jitwatch.parser.*
 import org.adoptopenjdk.jitwatch.parser.hotspot.*
 import org.adoptopenjdk.jitwatch.treevisitor.*
+import org.jetbrains.kotlin.idea.util.projectStructure.*
 import ru.yole.jitwatch.languages.*
 import java.io.*
 import java.nio.file.*
@@ -30,10 +31,31 @@ class JitWatchModelService(private val project: Project) {
         setClassLocations(
             mutableListOf(
                 "/home/leonid/work/kotlinx-io/core/build/classes/kotlin/jvm/main",
-                "/home/leonid/work/kotlinx-io/core/build/classes/kotlin/jvm/test"
+                "/home/leonid/work/kotlinx-io/core/build/classes/kotlin/jvm/test",
+                "/home/leonid/work/kotlinx-io/playground/build/classes/kotlin/jvm/main",
+                "/home/leonid/work/kotlinx-io/playground/build/classes/kotlin/jvm/test",
+                "/home/leonid/work/kotlinx-io/benchmarks/build/classes/kotlin/jvm/main",
+                "/home/leonid/work/kotlinx-io/benchmarks/build/classes/kotlin/jvm/test"
             )
         )
     }
+
+    private val javapPath: Path by lazy { findJavapPath() }
+
+    private fun findJavapPath(): Path =
+        project.allModules().asSequence().mapNotNull sdk@{
+            val instance = ModuleRootManager.getInstance(it)!!
+            val sdk = instance.sdk ?: return@sdk null
+            val javaSdk = JavaSdk.getInstance()!!
+
+            if (sdk.sdkType != javaSdk) {
+                return@sdk null
+            }
+
+            val binPath = javaSdk.getBinPath(sdk)
+            val exeName = if (SystemInfo.isWindows) "javap.exe" else "javap"
+            return@sdk Paths.get(binPath, exeName).takeIf { it.isFile() && it.exists() }
+        }.first()
 
     private var _model: IReadOnlyJITDataModel? = null
     private var inlineAnalyzer: InlineAnalyzer? = null
@@ -69,7 +91,6 @@ class JitWatchModelService(private val project: Project) {
 
             override fun handleJITEvent(event: JITEvent?) {
             }
-
             override fun handleReadStart() {
             }
         }
@@ -159,7 +180,6 @@ class JitWatchModelService(private val project: Project) {
         val module = ModuleUtil.findModuleForPsiElement(file) ?: return
         val outputRoots = CompilerModuleExtension.getInstance(module)!!.getOutputRoots(true)
             .map { it.canonicalPath }
-        val javapPath = findJavapPath(module)
 
         val allClasses = LanguageSupport.forElement(file).getAllClasses(file)
         for (cls in allClasses) {
@@ -168,20 +188,10 @@ class JitWatchModelService(private val project: Project) {
                 .getApplication()
                 .runReadAction(Computable { getMetaClass(cls) }) ?: continue
 
-            metaClass.getClassBytecode(JitWatchModelService.getInstance(project).model, outputRoots, javapPath)
+            metaClass.getClassBytecode(getInstance(project).model, outputRoots, javapPath)
             buildAllBytecodeAnnotations(metaClass, memberAnnotations)
             bytecodeAnnotations[metaClass] = memberAnnotations
         }
-    }
-
-    private fun findJavapPath(module: Module): Path? {
-        val sdk = ModuleRootManager.getInstance(module).sdk ?: return null
-        val javaSdk = JavaSdk.getInstance()
-        if (sdk.sdkType != javaSdk) return null
-        val binPath = javaSdk.getBinPath(sdk)
-        val exeName = if (SystemInfo.isWindows) "javap.exe" else "javap"
-        val result = Paths.get(binPath, exeName)
-        return if (result.isFile()) result else null
     }
 
     private fun buildAllBytecodeAnnotations(
@@ -230,12 +240,12 @@ class JitWatchModelService(private val project: Project) {
     }
 
     companion object {
-        fun getInstance(project: Project) = ServiceManager.getService(project, JitWatchModelService::class.java)
+        fun getInstance(project: Project): JitWatchModelService =
+            ServiceManager.getService(project, JitWatchModelService::class.java)
 
         val LOG = Logger.getInstance(JitWatchModelService::class.java)
     }
 }
-
 
 fun MemberBytecode.findInstructionsForSourceLine(sourceLine: Int): List<BytecodeInstruction> {
     val lineEntryIndex = lineTable.entries.indexOfFirst { it.sourceOffset == sourceLine }
